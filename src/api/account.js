@@ -33,7 +33,7 @@ export async function addOfficialAccount(accountData) {
 	}
 
 	return handleApiResponse(
-		apiClient.post('/addOfficialAccount', {
+		apiClient.post('/anyrouter2/addOfficialAccount', {
 			username,
 			password,
 			account_type,
@@ -89,7 +89,7 @@ export async function updateAccountInfo(_id, updateData) {
 	delete filteredData.account_type; // 不允许更新账号类型
 
 	return handleApiResponse(
-		apiClient.post('/updateAccountInfo', {
+		apiClient.post('/anyrouter2/updateAccountInfo', {
 			_id,
 			updateData: filteredData,
 		})
@@ -115,7 +115,7 @@ export async function getAccountLoginInfo(params) {
 	}
 
 	return handleApiResponse(
-		apiClient.post('/getAccountLoginInfo', {
+		apiClient.post('/anyrouter2/getAccountLoginInfo', {
 			login_info_id,
 			account_id,
 		})
@@ -140,8 +140,45 @@ export async function addAccountLoginInfo(params) {
 	}
 
 	return handleApiResponse(
-		apiClient.post('/addAccountLoginInfo', {
+		apiClient.post('/anyrouter2/addAccountLoginInfo', {
 			account_id,
+		})
+	);
+}
+
+/**
+ * 获取需要更新Session的LinuxDo账号列表
+ * @description 查询符合以下所有条件的 LinuxDo 账号：
+ * 1. LinuxDo 类型账号 (account_type = 1)
+ * 2. 未出售 (is_sold != true)
+ * 3. 没有 session，或者 session 在指定天数内过期（默认5天）
+ * 4. 账号对应的用户已激活 (is_active = true)
+ * 5. 账号对应的用户会员未过期 (member_expire_time > 当前时间)
+ * @param {Object} [params] - 请求参数
+ * @param {number} [params.days=5] - 过期天数阈值，默认为5天。查询 session 在该天数内过期的账号
+ * @returns {Promise<{success: boolean, data?: Array<{
+ *   _id: string,
+ *   username: string,
+ *   password: string,
+ *   account_type: 1,
+ *   session: string,
+ *   session_expire_time: number|null,
+ *   account_id: string,
+ *   cache_key: string,
+ *   workflow_url: string,
+ *   anyrouter_user_id: string,
+ *   notice_email: string,
+ *   user_username: string,
+ *   user_is_active: boolean,
+ *   user_member_expire_time: number
+ * }>, error?: string}>}
+ */
+export async function getLinuxDoAccountsNeedSession(params = {}) {
+	const { days = 5 } = params;
+
+	return handleApiResponse(
+		apiClient.post('/anyrouter2/getLinuxDoAccountsNeedSession', {
+			days,
 		})
 	);
 }
@@ -151,4 +188,5 @@ export default {
 	updateAccountInfo,
 	getAccountLoginInfo,
 	addAccountLoginInfo,
+	getLinuxDoAccountsNeedSession,
 };

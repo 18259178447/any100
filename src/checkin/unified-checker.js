@@ -7,7 +7,10 @@ import AnyRouterSignIn from './checkin-username.js';
 import AnyRouterLinuxDoSignIn from './checkin-linuxdo.js';
 import AnyRouterGitHubSignIn from './checkin-github.js';
 import AnyRouterSessionSignIn from './checkin-session.js';
-import { updateAccountInfo as updateAccountInfoAPI } from '../api/index.js';
+import {
+	updateAccountInfo as updateAccountInfoAPI,
+	getLinuxDoAccountsNeedSession,
+} from '../api/index.js';
 import { fileURLToPath } from 'url';
 
 class UnifiedAnyRouterChecker {
@@ -667,40 +670,38 @@ class UnifiedAnyRouterChecker {
 
 export default UnifiedAnyRouterChecker;
 
-// 如果直接运行此文件，执行注册
+// 如果直接运行此文件，执行签到
 const isMainModule = fileURLToPath(import.meta.url) === process.argv[1];
 
 if (isMainModule) {
 	(async () => {
-		const testAccounts = [
-			{
+		try {
+			console.log('[系统] 正在从服务器获取需要更新 Session 的 LinuxDo 账号...');
 
-				"_id": "69036e0b5ef9299ac22b2272",
-				"used": 0,
-				"notes": "",
-				"balance": 125,
-				"is_sold": false,
-				"session": "MTc2MTgzNTgwMHxEWDhFQVFMX2dBQUJFQUVRQUFEX3h2LUFBQVlHYzNSeWFXNW5EQWNBQldkeWIzVndCbk4wY21sdVp3d0pBQWRrWldaaGRXeDBCbk4wY21sdVp3d05BQXR2WVhWMGFGOXpkR0YwWlFaemRISnBibWNNRGdBTVVGZDRVbFZVV1hGbGRITTFCbk4wY21sdVp3d0VBQUpwWkFOcGJuUUVCUUQ5QXJnU0JuTjBjbWx1Wnd3S0FBaDFjMlZ5Ym1GdFpRWnpkSEpwYm1jTUR3QU5iR2x1ZFhoa2IxODRPVEE1TndaemRISnBibWNNQmdBRWNtOXNaUU5wYm5RRUFnQUNCbk4wY21sdVp3d0lBQVp6ZEdGMGRYTURhVzUwQkFJQUFnPT18uvDuzHwJbImuTQQcmSbH9icwpFuLR8oXHYn9QJJ9ac8=",
-				"aff_code": "wKqu",
-				"can_sell": true,
-				"password": "leishengjh",
-				"username": "leisheng",
-				"sell_date": 0,
-				"account_id": "89097",
-				"create_date": 1761832452721,
-				"update_date": 1761835849970,
-				"account_type": 1,
-				"checkin_date": 1761835738156,
-				"checkin_mode": 3,
-				"workflow_url": "https://github.com/18259178447/ay6",
-				"anyrouter_user_id": "official_user_001",
-				"agentrouter_balance": 35,
-				"checkin_error_count": 0,
-				"session_expire_time": 1764427808099
+			// 从服务器获取需要更新 Session 的账号列表
+			const accountsResult = await getLinuxDoAccountsNeedSession({ days: 5 });
+
+			if (!accountsResult.success) {
+				console.error(`[错误] 获取账号列表失败: ${accountsResult.error}`);
+				process.exit(1);
 			}
-		];
-		const checker = new UnifiedAnyRouterChecker(testAccounts);
-		const checkResult = await checker.run();
-		console.log('\n[最终结果]', JSON.stringify(checkResult, null, 2));
+
+			const accounts = accountsResult.data;
+
+			if (!accounts || accounts.length === 0) {
+				console.log('[信息] 没有需要更新 Session 的账号');
+				process.exit(0);
+			}
+
+			console.log(`[信息] 获取到 ${accounts.length} 个需要更新 Session 的账号`);
+
+			// 执行签到
+			const checker = new UnifiedAnyRouterChecker(accounts);
+			const checkResult = await checker.run();
+			console.log('\n[最终结果]', JSON.stringify(checkResult, null, 2));
+		} catch (error) {
+			console.error(`[错误] 执行失败: ${error.message}`);
+			process.exit(1);
+		}
 	})();
 }

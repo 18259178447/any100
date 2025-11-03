@@ -6,10 +6,105 @@
 import { chromium } from 'playwright';
 import { PlaywrightAntiFingerprintPlugin } from '../utils/playwright-anti-fingerprint-plugin.js';
 import { fileURLToPath } from 'url';
+import { uploadImage } from '../api/index.js';
+import fs from 'fs/promises';
 class AnyRouterLinuxDoSignIn {
 	constructor(baseUrl = 'https://anyrouter.top') {
 		this.baseUrl = baseUrl;
 		this.linuxDoUrl = 'https://linux.do';
+	}
+
+	/**
+	 * 截图并上传到云存储
+	 * @param {Page} page - Playwright 页面对象
+	 * @param {string} errorContext - 错误上下文描述
+	 * @returns {Promise<string|null>} - 返回图片的可直接访问URL或null
+	 */
+	async captureAndUploadScreenshot(page, errorContext) {
+		try {
+			if (!page || page.isClosed()) {
+				console.log('[截图] 页面已关闭,无法截图');
+				return null;
+			}
+
+			console.log(`[截图] 开始截图: ${errorContext}`);
+
+			// 生成临时文件路径
+			const timestamp = Date.now();
+			const filename = `error_${timestamp}.png`;
+			const tempPath = `./temp_${filename}`;
+
+			// 截取全页面截图
+			await page.screenshot({
+				path: tempPath,
+				fullPage: true,
+				type: 'png',
+			});
+
+			console.log(`[截图] 截图已保存到临时文件: ${tempPath}`);
+
+			// 读取文件为 base64
+			const imageBuffer = await fs.readFile(tempPath);
+			const base64Image = imageBuffer.toString('base64');
+
+			console.log('[上传] 开始上传截图到云存储...');
+
+			// 上传到云存储
+			const uploadResult = await uploadImage({
+				base64: base64Image,
+				fileExtension: 'png',
+				fileName: `linuxdo_error_${errorContext.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}`,
+				maxSize: 10485760, // 10MB
+			});
+
+			// 删除临时文件
+			try {
+				await fs.unlink(tempPath);
+				console.log('[清理] 临时截图文件已删除');
+			} catch (unlinkError) {
+				console.log(`[警告] 删除临时文件失败: ${unlinkError.message}`);
+			}
+
+			if (uploadResult.success && uploadResult.data) {
+				const { fileID, cloudPath, fileURL, size, timestamp } = uploadResult.data;
+				console.log(`[成功] 截图已上传`);
+				console.log(`[文件ID] ${fileID}`);
+				console.log(`[云路径] ${cloudPath}`);
+				console.log(`[图片URL] ${fileURL}`);
+				console.log(`[文件大小] ${size} 字节`);
+				console.log(`[上传时间] ${new Date(timestamp).toLocaleString('zh-CN')}`);
+				return fileURL; // 返回可直接访问的图片URL
+			} else {
+				console.log(`[失败] 截图上传失败: ${uploadResult.error}`);
+				return null;
+			}
+		} catch (error) {
+			console.log(`[错误] 截图上传过程出错: ${error.message}`);
+			return null;
+		}
+	}
+
+	/**
+	 * 带错误截图的等待包装器
+	 * @param {Function} waitFn - 等待函数
+	 * @param {Page} page - Playwright 页面对象
+	 * @param {string} errorContext - 错误上下文描述
+	 * @returns {Promise<any>} - 返回等待函数的结果
+	 */
+	async waitWithScreenshot(waitFn, page, errorContext) {
+		try {
+			return await waitFn();
+		} catch (error) {
+			console.log(`[错误] ${errorContext}: ${error.message}`);
+
+			// 截图并上传
+			const screenshotUrl = await this.captureAndUploadScreenshot(page, errorContext);
+			if (screenshotUrl) {
+				console.log(`[截图URL] ${screenshotUrl}`);
+			}
+
+			throw error;
+		}
 	}
 
 	/**
@@ -260,7 +355,14 @@ class AnyRouterLinuxDoSignIn {
 					console.log('[页面] 登录表单已就绪');
 				} catch (error) {
 					console.log(`[错误] 等待登录页面失败: ${error.message}`);
-					throw new Error('等待登录页面超时');
+
+					// 截图并上传
+					const screenshotUrl = await this.captureAndUploadScreenshot(page, 'wait_login_page_failed');
+					if (screenshotUrl) {
+						console.log(`[截图URL] ${screenshotUrl}`);
+					}
+
+					throw new Error(`等待登录页面超时: ${error.message}`);
 				}
 
 				// 需要登录 LinuxDo
@@ -302,14 +404,20 @@ class AnyRouterLinuxDoSignIn {
 
 				// 等待跳转到授权页面
 				console.log('[等待] 等待跳转到授权页面...');
-				await page.waitForURL('**/oauth2/authorize**', {
-					timeout: 150000,
-				});
+				await this.waitWithScreenshot(
+					() => page.waitForURL('**/oauth2/authorize**', { timeout: 150000 }),
+					page,
+					'wait_oauth_authorize_page'
+				);
 				await this.randomDelay(1000, 2000);
 
 				// 步骤5: 点击授权页面的"允许"按钮
 				console.log('[授权] 等待授权页面加载...');
-				await page.waitForSelector('a[href*="/oauth2/approve/"]', { timeout: 100000 });
+				await this.waitWithScreenshot(
+					() => page.waitForSelector('a[href*="/oauth2/approve/"]', { timeout: 100000 }),
+					page,
+					'wait_oauth_approve_button'
+				);
 				await this.randomDelay(500, 1000);
 
 				console.log('[授权] 点击"允许"按钮...');
@@ -416,10 +524,37 @@ class AnyRouterLinuxDoSignIn {
 				console.log('[失败] 未能获取完整的认证信息');
 				console.log(`  - session: ${sessionCookie ? '✓' : '✗'}`);
 				console.log(`  - api_user: ${apiUser ? '✓' : '✗'}`);
+
+				// 截图并上传以分析失败原因
+				try {
+					if (page && !page.isClosed()) {
+						const screenshotUrl = await this.captureAndUploadScreenshot(page, 'incomplete_auth_info');
+						if (screenshotUrl) {
+							console.log(`[截图URL] ${screenshotUrl}`);
+						}
+					}
+				} catch (screenshotError) {
+					console.log(`[警告] 截图失败: ${screenshotError.message}`);
+				}
+
 				return null;
 			}
 		} catch (error) {
 			console.log(`[错误] 登录过程发生错误: ${error.message}`);
+			console.log(`[错误堆栈] ${error.stack}`);
+
+			// 尝试截图并上传
+			try {
+				if (page && !page.isClosed()) {
+					const screenshotUrl = await this.captureAndUploadScreenshot(page, 'login_process_error');
+					if (screenshotUrl) {
+						console.log(`[截图URL] ${screenshotUrl}`);
+					}
+				}
+			} catch (screenshotError) {
+				console.log(`[警告] 截图失败: ${screenshotError.message}`);
+			}
+
 			return null;
 		} finally {
 			// 清理资源

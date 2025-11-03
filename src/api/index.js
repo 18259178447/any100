@@ -8,5 +8,7 @@ export {
 	updateAccountInfo,
 	getAccountLoginInfo,
 	addAccountLoginInfo,
+	getLinuxDoAccountsNeedSession,
 } from './account.js';
 export { getRandomApplication } from './application.js';
+export { uploadImage } from './upload.js';

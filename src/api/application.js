@@ -17,7 +17,7 @@ import apiClient, { handleApiResponse } from './client.js';
  * }
  */
 export async function getRandomApplication() {
-	return handleApiResponse(apiClient.post('/getRandomApplication', {}));
+	return handleApiResponse(apiClient.post('/anyrouter2/getRandomApplication', {}));
 }
 
 export default {
