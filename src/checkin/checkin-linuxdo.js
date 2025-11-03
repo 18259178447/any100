@@ -228,64 +228,84 @@ class AnyRouterLinuxDoSignIn {
 					}
 				});
 
-				// 等待页面完全加载
-				await this.randomDelay(1000, 2000);
+				// 步骤4: 等待页面稳定并检测登录页面（忽略中间跳转过程）
+				console.log('[等待] 等待进入 LinuxDo 登录页面（忽略中间跳转）...');
 
-				// 步骤4: 检查是否跳转到 LinuxDo 登录页面
-				const currentUrl = page.url();
-				console.log(`[页面] 当前 URL: ${currentUrl}`);
+				try {
+					// 检查当前 URL 是否已经是登录页面
+					let currentUrl = page.url();
 
-				if (currentUrl.includes('linux.do/login')) {
-					// 需要登录 LinuxDo
-					console.log('[LinuxDo] 检测到需要登录，开始填写 LinuxDo 账号...');
-
-					// 等待登录表单加载
-					await page.waitForSelector('#login-account-name', { timeout: 20000 });
-					await this.randomDelay(500, 1000);
-
-					// 输入用户名
-					console.log('[输入] 填写 LinuxDo 用户名...');
-					const usernameInput = page.locator('#login-account-name');
-					await usernameInput.click();
-					await this.randomDelay(300, 600);
-
-					// 模拟逐字输入
-					for (const char of username) {
-						await page.keyboard.type(char);
-						await this.randomDelay(50, 150);
+					if (!currentUrl.includes('linux.do/login')) {
+						// 如果不是登录页面，等待 URL 变为登录页面
+						console.log('[等待] 当前不在登录页面，等待跳转...');
+						await page.waitForURL((url) => {
+							const urlStr = url.href || url.toString();
+							return urlStr.includes('linux.do/login');
+						}, { timeout: 120000 });
+						currentUrl = page.url();
 					}
 
-					// 输入密码
-					console.log('[输入] 填写 LinuxDo 密码...');
-					const passwordInput = page.locator('#login-account-password');
-					await passwordInput.click();
-					await this.randomDelay(300, 600);
+					console.log(`[页面] 已在登录页面: ${currentUrl}`);
 
-					// 模拟逐字输入密码
-					for (const char of password) {
-						await page.keyboard.type(char);
-						await this.randomDelay(50, 150);
-					}
-
-					await this.randomDelay(500, 1000);
-
-					// 点击登录按钮
-					console.log('[LinuxDo] 点击登录按钮...');
-					const loginButton = page.locator('#login-button');
-					await loginButton.click();
-
-					// 等待跳转到授权页面
-					console.log('[等待] 等待跳转到授权页面...');
-					await page.waitForURL('**/oauth2/authorize**', {
-						timeout: 150000,
+					// 不等待 networkidle，直接等待登录表单元素出现
+					console.log('[等待] 等待登录表单加载...');
+					await page.waitForSelector('#login-account-name', {
+						state: 'visible',
+						timeout: 60000
 					});
+
+					// 等待一下确保页面稳定
 					await this.randomDelay(1000, 2000);
-				} else if (currentUrl.includes('oauth2/authorize')) {
-					// 已经登录，直接到达授权页面
-					console.log('[LinuxDo] 已登录，进入授权页面');
-				} else {
-					console.log('[警告] 未按预期跳转，当前URL: ' + currentUrl);
+
+					console.log('[页面] 登录表单已就绪');
+				} catch (error) {
+					console.log(`[错误] 等待登录页面失败: ${error.message}`);
+					throw new Error('等待登录页面超时');
 				}
+
+				// 需要登录 LinuxDo
+				console.log('[LinuxDo] 开始填写 LinuxDo 账号...');
+
+				// 登录表单已经在上面等待过了，直接使用
+				await this.randomDelay(500, 1000);
+
+				// 输入用户名
+				console.log('[输入] 填写 LinuxDo 用户名...');
+				const usernameInput = page.locator('#login-account-name');
+				await usernameInput.click();
+				await this.randomDelay(300, 600);
+
+				// 模拟逐字输入
+				for (const char of username) {
+					await page.keyboard.type(char);
+					await this.randomDelay(50, 150);
+				}
+
+				// 输入密码
+				console.log('[输入] 填写 LinuxDo 密码...');
+				const passwordInput = page.locator('#login-account-password');
+				await passwordInput.click();
+				await this.randomDelay(300, 600);
+
+				// 模拟逐字输入密码
+				for (const char of password) {
+					await page.keyboard.type(char);
+					await this.randomDelay(50, 150);
+				}
+
+				await this.randomDelay(500, 1000);
+
+				// 点击登录按钮
+				console.log('[LinuxDo] 点击登录按钮...');
+				const loginButton = page.locator('#login-button');
+				await loginButton.click();
+
+				// 等待跳转到授权页面
+				console.log('[等待] 等待跳转到授权页面...');
+				await page.waitForURL('**/oauth2/authorize**', {
+					timeout: 150000,
+				});
+				await this.randomDelay(1000, 2000);
 
 				// 步骤5: 点击授权页面的"允许"按钮
 				console.log('[授权] 等待授权页面加载...');
