@@ -183,10 +183,70 @@ export async function getLinuxDoAccountsNeedSession(params = {}) {
 	);
 }
 
+/**
+ * 自增AnyRouter账号余额
+ * @description 对指定账号的AnyRouter余额进行自增或扣减操作
+ * - 支持正数增加余额，负数扣减余额
+ * - 扣减时会自动检查余额是否足够
+ * - 使用数据库原子操作，保证并发安全
+ * - 返回操作前后的余额变化详情
+ * @param {Object} params - 请求参数
+ * @param {string} params._id - 账号记录ID
+ * @param {number} params.amount - 自增额度（必须为整数）。正数：增加余额；负数：扣减余额（会检查余额是否足够）
+ * @returns {Promise<{success: boolean, data?: {_id: string, old_balance: number, amount: number, new_balance: number}, error?: string}>}
+ * @example
+ * // 增加余额
+ * const result = await incrementBalance({ _id: '507f1f77bcf86cd799439011', amount: 100 });
+ * if (result.success) {
+ *   console.log(`余额从 ${result.data.old_balance} 增加到 ${result.data.new_balance}`);
+ * }
+ *
+ * @example
+ * // 扣减余额
+ * const result = await incrementBalance({ _id: '507f1f77bcf86cd799439011', amount: -50 });
+ * if (result.success) {
+ *   console.log(`余额从 ${result.data.old_balance} 扣减到 ${result.data.new_balance}`);
+ * } else {
+ *   console.error('扣减失败:', result.error); // 可能是余额不足
+ * }
+ */
+export async function incrementBalance({ _id, amount }) {
+	// 验证必需字段
+	if (!_id) {
+		return {
+			success: false,
+			error: '账号ID不能为空',
+		};
+	}
+
+	if (amount === undefined || amount === null) {
+		return {
+			success: false,
+			error: '变动额度不能为空',
+		};
+	}
+
+	// 验证amount必须为整数
+	if (!Number.isInteger(amount)) {
+		return {
+			success: false,
+			error: '变动额度必须为整数',
+		};
+	}
+
+	return handleApiResponse(
+		apiClient.post('/anyrouter2/incrementBalance', {
+			_id,
+			amount,
+		})
+	);
+}
+
 export default {
 	addOfficialAccount,
 	updateAccountInfo,
 	getAccountLoginInfo,
 	addAccountLoginInfo,
 	getLinuxDoAccountsNeedSession,
+	incrementBalance,
 };

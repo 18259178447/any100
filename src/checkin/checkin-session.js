@@ -259,7 +259,7 @@ class AnyRouterSessionSignIn {
 			);
 
 			console.log(`[响应] 签到响应状态码 ${result.status}`);
-			console.log(`[响应] 响应数据:`, JSON.stringify(result.data, null, 2));
+			console.log('[响应] 响应数据:', JSON.stringify(result.data, null, 2));
 
 			if (result.error) {
 				console.log(`[失败] 签到请求失败: ${result.error}`);
@@ -294,6 +294,7 @@ class AnyRouterSessionSignIn {
 										quota: data.data.quota,
 										usedQuota: data.data.used_quota,
 										affCode: data.data.aff_code,
+										affQuota: data.data.aff_quota || 0,
 									};
 								}
 								return null;
@@ -310,6 +311,53 @@ class AnyRouterSessionSignIn {
 						console.log(`[信息] 余额: $${(userInfo.quota / 500000).toFixed(2)}`);
 						console.log(`[信息] 已使用: $${(userInfo.usedQuota / 500000).toFixed(2)}`);
 						console.log(`[信息] 推广码: ${userInfo.affCode}`);
+
+						// 检查是否有邀请奖励需要划转
+						if (userInfo.affQuota && userInfo.affQuota > 0) {
+							console.log(`[信息] 检测到邀请奖励: $${(userInfo.affQuota / 500000).toFixed(2)}`);
+							console.log('[处理中] 开始划转邀请奖励到余额...');
+
+							const transferResult = await page.evaluate(
+								async ({ baseUrl, apiUser, affQuota }) => {
+									try {
+										const response = await fetch(`${baseUrl}/api/user/aff_transfer`, {
+											method: 'POST',
+											headers: {
+												Accept: 'application/json, text/plain, */*',
+												'Content-Type': 'application/json',
+												'new-api-user': apiUser,
+											},
+											body: JSON.stringify({ quota: affQuota }),
+											credentials: 'include',
+										});
+
+										const data = await response.json();
+										return {
+											success: data.success,
+											message: data.message,
+										};
+									} catch (error) {
+										return {
+											success: false,
+											error: error.message,
+										};
+									}
+								},
+								{ baseUrl: this.baseUrl, apiUser, affQuota: userInfo.affQuota }
+							);
+
+							// 不管划转成功或失败,都直接更新余额
+							userInfo.quota = userInfo.quota + userInfo.affQuota;
+							userInfo.affQuota = 0;
+
+							if (transferResult.success) {
+								console.log('[成功] 划转成功!');
+								console.log(`[信息] 划转后余额: $${(userInfo.quota / 500000).toFixed(2)}`);
+							} else {
+								console.log(`[失败] 划转失败: ${transferResult.error || transferResult.message}`);
+								console.log(`[信息] 当前余额: $${(userInfo.quota / 500000).toFixed(2)}`);
+							}
+						}
 					}
 
 					await context.close();
@@ -317,20 +365,20 @@ class AnyRouterSessionSignIn {
 				} else {
 					const errorMsg = data.msg || data.message || '未知错误';
 					console.log(`[失败] 签到失败 - ${errorMsg}`);
-					console.log(`[调试] 完整响应:`, JSON.stringify(data, null, 2));
+					console.log('[调试] 完整响应:', JSON.stringify(data, null, 2));
 					await context.close();
 					return { success: false, error: errorMsg };
 				}
 			} else {
 				console.log(`[失败] 签到失败 - HTTP ${result.status}`);
-				console.log(`[调试] 响应体:`, JSON.stringify(result.data, null, 2));
+				console.log('[调试] 响应体:', JSON.stringify(result.data, null, 2));
 				await context.close();
 				return { success: false, error: `HTTP ${result.status}` };
 			}
 		} catch (error) {
-			console.log(`[失败] 签到过程中发生错误:`);
+			console.log('[失败] 签到过程中发生错误:');
 			console.log(`[错误] 消息: ${error.message}`);
-			console.log(`[错误] 堆栈:`, error.stack);
+			console.log('[错误] 堆栈:', error.stack);
 			if (context) await context.close();
 			return { success: false, error: error.message };
 		}
@@ -351,8 +399,10 @@ if (isMainModule) {
 
 		// 示例：从命令行参数获取 session 和 api_user
 		// 用法：node checkin-session.js <session> <api_user>
-		const session = process.argv[2] || 'MTc2MTgwNjQyOHxEWDhFQVFMX2dBQUJFQUVRQUFEX3h2LUFBQVlHYzNSeWFXNW5EQW9BQ0hWelpYSnVZVzFsQm5OMGNtbHVad3dQQUExc2FXNTFlR1J2WHpnMk1ESXhCbk4wY21sdVp3d0dBQVJ5YjJ4bEEybHVkQVFDQUFJR2MzUnlhVzVuREFnQUJuTjBZWFIxY3dOcGJuUUVBZ0FDQm5OMGNtbHVad3dIQUFWbmNtOTFjQVp6ZEhKcGJtY01DUUFIWkdWbVlYVnNkQVp6ZEhKcGJtY01EUUFMYjJGMWRHaGZjM1JoZEdVR2MzUnlhVzVuREE0QUREUjBOWGxwUjFJeVJtVkZUZ1p6ZEhKcGJtY01CQUFDYVdRRGFXNTBCQVVBX1FLZ0NnPT18dbFHh5O7_lF3BE9EAKndKHehZ-1a03b7KDcqOivDUEA=';
-		const apiUser = process.argv[3] || '86021';
+		const session =
+			process.argv[2] ||
+			"MTc2MjE3NTk5NXxEWDhFQVFMX2dBQUJFQUVRQUFEXzRfLUFBQWNHYzNSeWFXNW5EQVVBQTJGbVpnWnpkSEpwYm1jTUJnQUVZekUxUVFaemRISnBibWNNRFFBTGIyRjFkR2hmYzNSaGRHVUdjM1J5YVc1bkRBNEFERXB6Y3pSa1dVUkJRWEY1ZFFaemRISnBibWNNQkFBQ2FXUURhVzUwQkFVQV9RSzdDQVp6ZEhKcGJtY01DZ0FJZFhObGNtNWhiV1VHYzNSeWFXNW5EQThBRFd4cGJuVjRaRzlmT0RrME56WUdjM1J5YVc1bkRBWUFCSEp2YkdVRGFXNTBCQUlBQWdaemRISnBibWNNQ0FBR2MzUmhkSFZ6QTJsdWRBUUNBQUlHYzNSeWFXNW5EQWNBQldkeWIzVndCbk4wY21sdVp3d0pBQWRrWldaaGRXeDB8XN6llGPM9USwhJtbBp7NkenJWg0PwZiV4u4CkXtUMzs="
+		const apiUser = process.argv[3] || '89476'
 
 		if (!session || !apiUser) {
 			console.log('[错误] 请提供 session 和 api_user 参数');

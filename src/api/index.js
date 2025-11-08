@@ -9,6 +9,8 @@ export {
 	getAccountLoginInfo,
 	addAccountLoginInfo,
 	getLinuxDoAccountsNeedSession,
+	incrementBalance,
 } from './account.js';
-export { getRandomApplication } from './application.js';
+export { getRandomApplication, resetApplicationUsage } from './application.js';
+export { getTopPriorityTask, updateInviteCount } from './invite-task.js';
 export { uploadImage } from './upload.js';

@@ -67,7 +67,7 @@ class AnyRouterLinuxDoSignIn {
 
 			if (uploadResult.success && uploadResult.data) {
 				const { fileID, cloudPath, fileURL, size, timestamp } = uploadResult.data;
-				console.log(`[成功] 截图已上传`);
+				console.log('[成功] 截图已上传');
 				console.log(`[文件ID] ${fileID}`);
 				console.log(`[云路径] ${cloudPath}`);
 				console.log(`[图片URL] ${fileURL}`);
@@ -333,10 +333,13 @@ class AnyRouterLinuxDoSignIn {
 					if (!currentUrl.includes('linux.do/login')) {
 						// 如果不是登录页面，等待 URL 变为登录页面
 						console.log('[等待] 当前不在登录页面，等待跳转...');
-						await page.waitForURL((url) => {
-							const urlStr = url.href || url.toString();
-							return urlStr.includes('linux.do/login');
-						}, { timeout: 120000 });
+						await page.waitForURL(
+							(url) => {
+								const urlStr = url.href || url.toString();
+								return urlStr.includes('linux.do/login');
+							},
+							{ timeout: 120000 }
+						);
 						currentUrl = page.url();
 					}
 
@@ -346,7 +349,7 @@ class AnyRouterLinuxDoSignIn {
 					console.log('[等待] 等待登录表单加载...');
 					await page.waitForSelector('#login-account-name', {
 						state: 'visible',
-						timeout: 60000
+						timeout: 60000,
 					});
 
 					// 等待一下确保页面稳定
@@ -357,7 +360,10 @@ class AnyRouterLinuxDoSignIn {
 					console.log(`[错误] 等待登录页面失败: ${error.message}`);
 
 					// 截图并上传
-					const screenshotUrl = await this.captureAndUploadScreenshot(page, 'wait_login_page_failed');
+					const screenshotUrl = await this.captureAndUploadScreenshot(
+						page,
+						'wait_login_page_failed'
+					);
 					if (screenshotUrl) {
 						console.log(`[截图URL] ${screenshotUrl}`);
 					}
@@ -528,7 +534,10 @@ class AnyRouterLinuxDoSignIn {
 				// 截图并上传以分析失败原因
 				try {
 					if (page && !page.isClosed()) {
-						const screenshotUrl = await this.captureAndUploadScreenshot(page, 'incomplete_auth_info');
+						const screenshotUrl = await this.captureAndUploadScreenshot(
+							page,
+							'incomplete_auth_info'
+						);
 						if (screenshotUrl) {
 							console.log(`[截图URL] ${screenshotUrl}`);
 						}

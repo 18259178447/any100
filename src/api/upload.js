@@ -67,7 +67,20 @@ export async function uploadImage(uploadData) {
 	}
 
 	// 验证文件扩展名
-	const validExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
+	const validExtensions = [
+		'png',
+		'jpg',
+		'jpeg',
+		'gif',
+		'webp',
+		'bmp',
+		'.png',
+		'.jpg',
+		'.jpeg',
+		'.gif',
+		'.webp',
+		'.bmp',
+	];
 	const normalizedExt = fileExtension.toLowerCase().trim();
 	if (!validExtensions.includes(normalizedExt)) {
 		return {
@@ -96,9 +109,7 @@ export async function uploadImage(uploadData) {
 		requestData.fileName = fileName.trim();
 	}
 
-	return handleApiResponse(
-		apiClient.post('/upload/uploadImage', requestData)
-	);
+	return handleApiResponse(apiClient.post('/upload/uploadImage', requestData));
 }
 
 export default {
