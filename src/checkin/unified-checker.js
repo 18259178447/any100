@@ -487,6 +487,10 @@ class UnifiedAnyRouterChecker {
 				if (signInResult.userInfo.affCode) {
 					updateData.aff_code = signInResult.userInfo.affCode;
 				}
+				// 添加令牌信息
+				if (signInResult.userInfo.tokens) {
+					updateData.tokens = signInResult.userInfo.tokens;
+				}
 
 				const quota = (signInResult.userInfo.quota / 500000).toFixed(2);
 				const usedQuota = (signInResult.userInfo.usedQuota || 0) / 500000;

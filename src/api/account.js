@@ -62,6 +62,7 @@ export async function addOfficialAccount(accountData) {
  * @param {string} [updateData.cache_key] - 用户持久化时的辅助key
  * @param {number} [updateData.checkin_error_count] - 连续签到失败的次数统计
  * @param {number} [updateData.checkin_mode] - 签到模式：1-只签到anyrouter，2-只签到agentrouter，3-两者都签到
+ * @param {Array<{id: number, key: string, unlimited_quota?: boolean, used_quota?: number, remain_quota?: number}>} [updateData.tokens] - AnyRouter账号的所有令牌信息。每个令牌包含：id(令牌ID)、key(访问密钥)、unlimited_quota(是否无限额度)、used_quota(已使用额度)、remain_quota(剩余额度)
  * @param {string} [updateData.aff_code] - 推广码（本地定义字段，API不支持）
  * @param {number} [updateData.used] - 已使用额度（本地定义字段，API不支持）
  * @returns {Promise<{success: boolean, data?: {updated: number, updatedFields: string[]}, error?: string}>}
