@@ -469,8 +469,8 @@ class UnifiedAnyRouterChecker {
 
 		console.log(`[登录] ${accountName}: 使用 Session 签到 (API User: ${apiUser})`);
 
-		// 调用 Session 签到模块
-		const signInResult = await this.sessionSignInModule.signIn(session, apiUser);
+		// 调用 Session 签到模块，传递账号信息用于令牌管理
+		const signInResult = await this.sessionSignInModule.signIn(session, apiUser, accountInfo);
 
 		if (signInResult && signInResult.success) {
 			// 构建更新数据
@@ -490,7 +490,10 @@ class UnifiedAnyRouterChecker {
 				// 添加令牌信息
 				if (signInResult.userInfo.tokens) {
 					updateData.tokens = signInResult.userInfo.tokens;
+					delete signInResult.userInfo.tokens;
 				}
+
+				updateData.userInfo = signInResult.userInfo;
 
 				const quota = (signInResult.userInfo.quota / 500000).toFixed(2);
 				const usedQuota = (signInResult.userInfo.usedQuota || 0) / 500000;

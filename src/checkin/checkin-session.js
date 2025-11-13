@@ -156,34 +156,24 @@ class AnyRouterSessionSignIn {
 	}
 
 	/**
-	 * 创建新令牌
+	 * 删除令牌
 	 * @param {Object} page - Playwright page 对象
 	 * @param {string} apiUser - API User ID
-	 * @returns {boolean} - 是否创建成功
+	 * @param {number} tokenId - 令牌ID
+	 * @returns {boolean} - 是否删除成功
 	 */
-	async createToken(page, apiUser) {
+	async deleteToken(page, apiUser, tokenId) {
 		try {
-			console.log('[令牌] 创建新令牌...');
+			console.log(`[令牌] 删除令牌 ID: ${tokenId}...`);
 			const result = await page.evaluate(
-				async ({ baseUrl, apiUser }) => {
+				async ({ baseUrl, apiUser, tokenId }) => {
 					try {
-						const response = await fetch(`${baseUrl}/api/token/`, {
-							method: 'POST',
+						const response = await fetch(`${baseUrl}/api/token/${tokenId}`, {
+							method: 'DELETE',
 							headers: {
 								Accept: 'application/json, text/plain, */*',
-								'Content-Type': 'application/json',
 								'new-api-user': apiUser,
 							},
-							body: JSON.stringify({
-								name: 'dw',
-								remain_quota: 500000,
-								expired_time: -1,
-								unlimited_quota: true,
-								model_limits_enabled: false,
-								model_limits: '',
-								allow_ips: '',
-								group: 'default',
-							}),
 							credentials: 'include',
 						});
 
@@ -198,7 +188,82 @@ class AnyRouterSessionSignIn {
 						};
 					}
 				},
-				{ baseUrl: this.baseUrl, apiUser }
+				{ baseUrl: this.baseUrl, apiUser, tokenId }
+			);
+
+			if (result.error) {
+				console.log(`[失败] 删除令牌失败: ${result.error}`);
+				return false;
+			}
+
+			if (result.status === 200 && result.data.success) {
+				console.log(`[成功] 令牌 ${tokenId} 删除成功`);
+				return true;
+			}
+
+			console.log(`[失败] 删除令牌失败: ${result.data.message || '未知错误'}`);
+			return false;
+		} catch (error) {
+			console.log(`[失败] 删除令牌时发生错误: ${error.message}`);
+			return false;
+		}
+	}
+
+	/**
+	 * 创建新令牌
+	 * @param {Object} page - Playwright page 对象
+	 * @param {string} apiUser - API User ID
+	 * @param {Object} tokenConfig - 令牌配置（可选）
+	 * @returns {boolean} - 是否创建成功
+	 */
+	async createToken(page, apiUser, tokenConfig = {}) {
+		try {
+			console.log('[令牌] 创建新令牌...');
+
+			// 根据是否无限额度构建请求体
+			const requestBody = {
+				name: tokenConfig.name || 'dw',
+				expired_time: -1,
+				model_limits_enabled: false,
+				model_limits: '',
+				allow_ips: '',
+				group: 'default',
+			};
+
+			// 如果是无限额度
+			if (tokenConfig.unlimited_quota) {
+				requestBody.unlimited_quota = true;
+			} else {
+				// 非无限额度，需要提供 remain_quota
+				requestBody.remain_quota = tokenConfig.remain_quota || 500000;
+			}
+
+			const result = await page.evaluate(
+				async ({ baseUrl, apiUser, requestBody }) => {
+					try {
+						const response = await fetch(`${baseUrl}/api/token/`, {
+							method: 'POST',
+							headers: {
+								Accept: 'application/json, text/plain, */*',
+								'Content-Type': 'application/json',
+								'new-api-user': apiUser,
+							},
+							body: JSON.stringify(requestBody),
+							credentials: 'include',
+						});
+
+						const data = await response.json();
+						return {
+							status: response.status,
+							data: data,
+						};
+					} catch (error) {
+						return {
+							error: error.message,
+						};
+					}
+				},
+				{ baseUrl: this.baseUrl, apiUser, requestBody }
 			);
 
 			if (result.error) {
@@ -277,9 +342,10 @@ class AnyRouterSessionSignIn {
 	 * 使用 session 和 api_user 执行签到（使用 Playwright）
 	 * @param {string} session - Session cookie 值
 	 * @param {string} apiUser - API User ID
+	 * @param {Object} accountInfo - 账号信息（可选，用于令牌管理）
 	 * @returns {Object|null} - 签到结果 { success: boolean, userInfo: object }
 	 */
-	async signIn(session, apiUser) {
+	async signIn(session, apiUser, accountInfo = null) {
 		console.log(`\n[签到] 开始处理 Session 签到 (API User: ${apiUser})`);
 
 		let context = null;
@@ -476,29 +542,54 @@ class AnyRouterSessionSignIn {
 							}
 						}
 
-						// 获取令牌信息
-						let tokens = await this.getTokens(page, apiUser);
+						// 获取令牌信息之前，根据账号配置管理令牌
+						if (accountInfo && accountInfo.tokens && Array.isArray(accountInfo.tokens)) {
+							console.log(
+								`[令牌管理] 发现账号配置中有 ${accountInfo.tokens.length} 个令牌配置，开始处理...`
+							);
 
-						// 如果没有令牌，先创建一个
-						if (tokens.length === 0) {
-							const created = await this.createToken(page, apiUser);
-							if (created) {
-								// 创建成功后重新获取令牌列表
-								tokens = await this.getTokens(page, apiUser);
+							for (const tokenConfig of accountInfo.tokens) {
+								// 如果有 id 且标记为删除，则删除该令牌
+								if (tokenConfig.id && tokenConfig.is_deleted) {
+									console.log(`[令牌管理] 准备删除令牌 ID: ${tokenConfig.id}`);
+									await this.deleteToken(page, apiUser, tokenConfig.id);
+								}
+								// 如果没有 id，表示是待创建的新令牌
+								else if (!tokenConfig.id) {
+									console.log('[令牌管理] 准备创建新令牌');
+									await this.createToken(page, apiUser, {
+										unlimited_quota: tokenConfig.unlimited_quota || false,
+										remain_quota: tokenConfig.remain_quota,
+									});
+								}
 							}
-						}
 
-						// 过滤令牌数据，只保留需要的字段
-						if (tokens.length > 0) {
-							userInfo.tokens = tokens.map((token) => ({
-								id: token.id,
-								key: token.key,
-								unlimited_quota: token.unlimited_quota,
-								used_quota: token.used_quota,
-								remain_quota: token.remain_quota,
-							}));
-							console.log(`[信息] 成功获取 ${userInfo.tokens.length} 个令牌信息`);
+						console.log('[令牌管理] 令牌管理完成');
+				}
+
+				// 获取令牌信息
+					let tokens = await this.getTokens(page, apiUser);
+
+					// 如果没有令牌，先创建一个
+					if (tokens.length === 0) {
+						const created = await this.createToken(page, apiUser);
+						if (created) {
+							// 创建成功后重新获取令牌列表
+							tokens = await this.getTokens(page, apiUser);
 						}
+					}
+
+					// 过滤令牌数据，只保留需要的字段
+					if (tokens.length > 0) {
+						userInfo.tokens = tokens.map((token) => ({
+							id: token.id,
+							key: token.key,
+							unlimited_quota: token.unlimited_quota,
+							used_quota: token.used_quota,
+							remain_quota: token.remain_quota,
+						}));
+						console.log(`[信息] 成功获取 ${userInfo.tokens.length} 个令牌信息`);
+					}
 					}
 
 					await context.close();
@@ -542,8 +633,8 @@ if (isMainModule) {
 		// 用法：node checkin-session.js <session> <api_user>
 		const session =
 			process.argv[2] ||
-			"MTc2MjI5ODE4NXxEWDhFQVFMX2dBQUJFQUVRQUFEXzRfLUFBQWNHYzNSeWFXNW5EQVFBQW1sa0EybHVkQVFGQVAwQ3ZGWUdjM1J5YVc1bkRBb0FDSFZ6WlhKdVlXMWxCbk4wY21sdVp3d1BBQTFzYVc1MWVHUnZYemc1TmpReUJuTjBjbWx1Wnd3R0FBUnliMnhsQTJsdWRBUUNBQUlHYzNSeWFXNW5EQWdBQm5OMFlYUjFjd05wYm5RRUFnQUNCbk4wY21sdVp3d0hBQVZuY205MWNBWnpkSEpwYm1jTUNRQUhaR1ZtWVhWc2RBWnpkSEpwYm1jTUJRQURZV1ptQm5OMGNtbHVad3dHQUFSak1UVkJCbk4wY21sdVp3d05BQXR2WVhWMGFGOXpkR0YwWlFaemRISnBibWNNRGdBTWJVSnhVVmRXVVZwQlFYZHV8Qrat05CfISodKG799ailLIv3aCMk6c-YCJ7z5UcA-Kg="
-		const apiUser = process.argv[3] || '89643'
+			'MTc2MjI5ODE4NXxEWDhFQVFMX2dBQUJFQUVRQUFEXzRfLUFBQWNHYzNSeWFXNW5EQVFBQW1sa0EybHVkQVFGQVAwQ3ZGWUdjM1J5YVc1bkRBb0FDSFZ6WlhKdVlXMWxCbk4wY21sdVp3d1BBQTFzYVc1MWVHUnZYemc1TmpReUJuTjBjbWx1Wnd3R0FBUnliMnhsQTJsdWRBUUNBQUlHYzNSeWFXNW5EQWdBQm5OMFlYUjFjd05wYm5RRUFnQUNCbk4wY21sdVp3d0hBQVZuY205MWNBWnpkSEpwYm1jTUNRQUhaR1ZtWVhWc2RBWnpkSEpwYm1jTUJRQURZV1ptQm5OMGNtbHVad3dHQUFSak1UVkJCbk4wY21sdVp3d05BQXR2WVhWMGFGOXpkR0YwWlFaemRISnBibWNNRGdBTWJVSnhVVmRXVVZwQlFYZHV8Qrat05CfISodKG799ailLIv3aCMk6c-YCJ7z5UcA-Kg=';
+		const apiUser = process.argv[3] || '89643';
 
 		if (!session || !apiUser) {
 			console.log('[错误] 请提供 session 和 api_user 参数');
