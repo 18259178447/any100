@@ -56,6 +56,7 @@ export async function addOfficialAccount(accountData) {
  * @param {number} [updateData.agentrouter_balance] - AgentRouter账号余额
  * @param {boolean} [updateData.is_sold] - 是否已售出
  * @param {number} [updateData.sell_date] - 出售时间戳
+ * @param {number} [updateData.account_type] - 登录类型：0-账号密码登录，1-LinuxDo登录（username/password为LinuxDo账号），2-GitHub登录（username/password为GitHub账号）
  * @param {boolean} [updateData.can_sell] - 是否可出售
  * @param {string} [updateData.workflow_url] - 工作流URL
  * @param {string} [updateData.notes] - 备注信息
@@ -87,7 +88,7 @@ export async function updateAccountInfo(_id, updateData) {
 	const filteredData = { ...updateData };
 	delete filteredData.create_date;
 	delete filteredData._id;
-	delete filteredData.account_type; // 不允许更新账号类型
+	// 注意：account_type 字段现在允许更新，以支持账号类型转换（如从 LinuxDo 登录转为账号密码登录）
 
 	return handleApiResponse(
 		apiClient.post('/anyrouter2/updateAccountInfo', {
@@ -148,15 +149,10 @@ export async function addAccountLoginInfo(params) {
 }
 
 /**
- * 获取需要更新Session的LinuxDo账号列表
+ * 获取存在Session的LinuxDo账号列表
  * @description 查询符合以下所有条件的 LinuxDo 账号：
  * 1. LinuxDo 类型账号 (account_type = 1)
- * 2. 未出售 (is_sold != true)
- * 3. 没有 session，或者 session 在指定天数内过期（默认5天）
- * 4. 账号对应的用户已激活 (is_active = true)
- * 5. 账号对应的用户会员未过期 (member_expire_time > 当前时间)
- * @param {Object} [params] - 请求参数
- * @param {number} [params.days=5] - 过期天数阈值，默认为5天。查询 session 在该天数内过期的账号
+ * 2. 存在 session 且不为空
  * @returns {Promise<{success: boolean, data?: Array<{
  *   _id: string,
  *   username: string,
@@ -166,22 +162,11 @@ export async function addAccountLoginInfo(params) {
  *   session_expire_time: number|null,
  *   account_id: string,
  *   cache_key: string,
- *   workflow_url: string,
- *   anyrouter_user_id: string,
- *   notice_email: string,
- *   user_username: string,
- *   user_is_active: boolean,
- *   user_member_expire_time: number
+ *   workflow_url: string
  * }>, error?: string}>}
  */
-export async function getLinuxDoAccountsNeedSession(params = {}) {
-	const { days = 5 } = params;
-
-	return handleApiResponse(
-		apiClient.post('/anyrouter2/getLinuxDoAccountsNeedSession', {
-			days,
-		})
-	);
+export async function getLinuxDoAccountsWithSession() {
+	return handleApiResponse(apiClient.post('/anyrouter2/getLinuxDoAccountsWithSession', {}));
 }
 
 /**
@@ -248,6 +233,6 @@ export default {
 	updateAccountInfo,
 	getAccountLoginInfo,
 	addAccountLoginInfo,
-	getLinuxDoAccountsNeedSession,
+	getLinuxDoAccountsWithSession,
 	incrementBalance,
 };

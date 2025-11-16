@@ -564,32 +564,32 @@ class AnyRouterSessionSignIn {
 								}
 							}
 
-						console.log('[令牌管理] 令牌管理完成');
-				}
-
-				// 获取令牌信息
-					let tokens = await this.getTokens(page, apiUser);
-
-					// 如果没有令牌，先创建一个
-					if (tokens.length === 0) {
-						const created = await this.createToken(page, apiUser);
-						if (created) {
-							// 创建成功后重新获取令牌列表
-							tokens = await this.getTokens(page, apiUser);
+							console.log('[令牌管理] 令牌管理完成');
 						}
-					}
 
-					// 过滤令牌数据，只保留需要的字段
-					if (tokens.length > 0) {
-						userInfo.tokens = tokens.map((token) => ({
-							id: token.id,
-							key: token.key,
-							unlimited_quota: token.unlimited_quota,
-							used_quota: token.used_quota,
-							remain_quota: token.remain_quota,
-						}));
-						console.log(`[信息] 成功获取 ${userInfo.tokens.length} 个令牌信息`);
-					}
+						// 获取令牌信息
+						let tokens = await this.getTokens(page, apiUser);
+
+						// 如果没有令牌，先创建一个
+						if (tokens.length === 0) {
+							const created = await this.createToken(page, apiUser);
+							if (created) {
+								// 创建成功后重新获取令牌列表
+								tokens = await this.getTokens(page, apiUser);
+							}
+						}
+
+						// 过滤令牌数据，只保留需要的字段
+						if (tokens.length > 0) {
+							userInfo.tokens = tokens.map((token) => ({
+								id: token.id,
+								key: token.key,
+								unlimited_quota: token.unlimited_quota,
+								used_quota: token.used_quota,
+								remain_quota: token.remain_quota,
+							}));
+							console.log(`[信息] 成功获取 ${userInfo.tokens.length} 个令牌信息`);
+						}
 					}
 
 					await context.close();

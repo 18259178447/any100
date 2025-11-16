@@ -8,9 +8,10 @@ export {
 	updateAccountInfo,
 	getAccountLoginInfo,
 	addAccountLoginInfo,
-	getLinuxDoAccountsNeedSession,
+	getLinuxDoAccountsWithSession,
 	incrementBalance,
 } from './account.js';
 export { getRandomApplication, resetApplicationUsage } from './application.js';
 export { getTopPriorityTask, updateInviteCount } from './invite-task.js';
 export { uploadImage } from './upload.js';
+export { addEmail, getLatestEmail, queryEmails } from './email.js';

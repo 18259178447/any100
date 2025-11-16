@@ -69,7 +69,7 @@ class AnyRouterSignIn {
 
 			// 启动持久化浏览器上下文
 			context = await chromium.launchPersistentContext(userDataDir, {
-				headless: true,
+				headless: false,
 				viewport: { width: 1920, height: 1080 },
 				userAgent:
 					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -141,7 +141,7 @@ class AnyRouterSignIn {
 			console.log('[页面] 访问登录页面...');
 			await page.goto(`${this.baseUrl}/login`, {
 				waitUntil: 'networkidle',
-				timeout: 30000,
+				timeout: 600000,
 			});
 
 			// 等待页面加载完成
@@ -235,7 +235,7 @@ class AnyRouterSignIn {
 
 				// 等待跳转到控制台页面
 				await page.waitForURL('**/console', {
-					timeout: 15000,
+					timeout: 60000,
 					waitUntil: 'networkidle',
 				});
 
