@@ -49,7 +49,7 @@ class AnyRouterSignIn {
 
 			// 启动浏览器（非持久化模式）
 			browser = await chromium.launch({
-				headless: false,
+				headless: true,
 				args: getStealthArgs(),
 				ignoreDefaultArgs: getIgnoreDefaultArgs(),
 			});
