@@ -84,28 +84,56 @@ class AnyRouterSignIn {
 			// 等待页面完全稳定
 			await this.randomDelay(2000, 3000);
 
+			// 步骤1.5: 查看并打印当前 cookies 和 localStorage
+			console.log('[调试] 登录前的浏览器状态:');
+			const beforeLoginState = await page.evaluate(() => {
+
+				// 获取 localStorage
+				const localStorageData = {};
+				for (let i = 0; i < localStorage.length; i++) {
+					const key = localStorage.key(i);
+					localStorageData[key] = localStorage.getItem(key);
+				}
+
+				return {
+					localStorage: localStorageData,
+				};
+			});
+			const cookies2 = await context.cookies();
+
+			console.log('[Cookies] 登录前 cookies:', cookies2);
+			console.log('[localStorage] 登录前 localStorage:', JSON.stringify(beforeLoginState.localStorage, null, 2));
+
 			// 步骤2: 调用登录接口（使用 page.evaluate + fetch）
-			console.log('[API] 调用登录接口...');
+			console.log('[API] 调用登录接口...', "2" + username + "1", "2" + password + "2");
 			const loginResult = await page.evaluate(
 				async ({ baseUrl, username, password }) => {
 					try {
+						const requestHeaders = {
+							'Content-Type': 'application/json',
+						};
+
 						const response = await fetch(`${baseUrl}/api/user/login?turnstile=`, {
 							method: 'POST',
-							headers: {
-								'Content-Type': 'application/json',
-							},
+							headers: requestHeaders,
 							body: JSON.stringify({ username, password }),
 							credentials: 'include', // 重要：确保接收 cookies
 						});
 
-						// 获取响应头中的 Set-Cookie（注意：在浏览器环境中无法直接访问 Set-Cookie）
-						// session 会自动保存到浏览器 cookies 中
+						// 获取响应头（只能访问允许的响应头）
+						const responseHeaders = {};
+						response.headers.forEach((value, key) => {
+							responseHeaders[key] = value;
+						});
+
 						const data = await response.json();
 
 						return {
 							success: response.ok,
 							status: response.status,
 							data: data,
+							requestHeaders: requestHeaders,
+							responseHeaders: responseHeaders,
 						};
 					} catch (error) {
 						return {
@@ -116,6 +144,14 @@ class AnyRouterSignIn {
 				},
 				{ baseUrl: this.baseUrl, username, password }
 			);
+
+			// 打印请求和响应头部
+			if (loginResult.requestHeaders) {
+				console.log('[请求头] 登录接口请求头:', JSON.stringify(loginResult.requestHeaders, null, 2));
+			}
+			if (loginResult.responseHeaders) {
+				console.log('[响应头] 登录接口响应头:', JSON.stringify(loginResult.responseHeaders, null, 2));
+			}
 
 			if (!loginResult.success) {
 				console.log(`[错误] 登录接口调用失败: ${loginResult.error || loginResult.status}`);
@@ -151,14 +187,22 @@ class AnyRouterSignIn {
 			const signInResult = await page.evaluate(
 				async ({ baseUrl, apiUser }) => {
 					try {
+						const requestHeaders = {
+							'Content-Type': 'application/json',
+							'new-api-user': String(apiUser),
+							referer: `${baseUrl}/console`,
+						};
+
 						const response = await fetch(`${baseUrl}/api/user/sign_in`, {
 							method: 'POST',
-							headers: {
-								'Content-Type': 'application/json',
-								'new-api-user': String(apiUser),
-								referer: `${baseUrl}/console`,
-							},
+							headers: requestHeaders,
 							credentials: 'include',
+						});
+
+						// 获取响应头
+						const responseHeaders = {};
+						response.headers.forEach((value, key) => {
+							responseHeaders[key] = value;
 						});
 
 						const data = await response.json();
@@ -166,6 +210,8 @@ class AnyRouterSignIn {
 						return {
 							success: response.ok,
 							data: data,
+							requestHeaders: requestHeaders,
+							responseHeaders: responseHeaders,
 						};
 					} catch (error) {
 						return {
@@ -176,6 +222,14 @@ class AnyRouterSignIn {
 				},
 				{ baseUrl: this.baseUrl, apiUser }
 			);
+
+			// 打印请求和响应头部
+			if (signInResult.requestHeaders) {
+				console.log('[请求头] 签到接口请求头:', JSON.stringify(signInResult.requestHeaders, null, 2));
+			}
+			if (signInResult.responseHeaders) {
+				console.log('[响应头] 签到接口响应头:', JSON.stringify(signInResult.responseHeaders, null, 2));
+			}
 
 			if (signInResult.success && signInResult.data.success) {
 				console.log('[签到] 签到成功！');
