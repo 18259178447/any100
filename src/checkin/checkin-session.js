@@ -572,7 +572,7 @@ class AnyRouterSessionSignIn {
 
 						// 如果没有令牌，先创建一个
 						if (tokens.length === 0) {
-							const created = await this.createToken(page, apiUser);
+							const created = await this.createToken(page, apiUser, {unlimited_quota:true});
 							if (created) {
 								// 创建成功后重新获取令牌列表
 								tokens = await this.getTokens(page, apiUser);
