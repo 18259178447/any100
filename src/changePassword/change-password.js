@@ -53,7 +53,7 @@ class AnyRouterChangePassword {
 
 			// 启动浏览器（非持久化模式）
 			this.browser = await chromium.launch({
-				headless: true,
+				headless: false,
 				args: getStealthArgs(),
 				ignoreDefaultArgs: getIgnoreDefaultArgs(),
 			});
@@ -175,7 +175,25 @@ class AnyRouterChangePassword {
 							credentials: 'include',
 						});
 
-						const data = await response.json();
+						// 获取响应文本用于调试
+						const responseText = await response.text();
+						console.log('[调试] 登录接口响应状态:', response.status);
+						console.log('[调试] 登录接口响应头:', Object.fromEntries(response.headers.entries()));
+						console.log('[调试] 登录接口响应体（前500字符）:', responseText.substring(0, 500));
+
+						// 尝试解析 JSON
+						let data;
+						try {
+							data = JSON.parse(responseText);
+						} catch (parseError) {
+							console.error('[错误] JSON 解析失败:', parseError.message);
+							return {
+								success: false,
+								error: `JSON解析失败: ${parseError.message}`,
+								responseText: responseText.substring(0, 1000),
+								status: response.status,
+							};
+						}
 
 						return {
 							success: response.ok,
@@ -183,6 +201,7 @@ class AnyRouterChangePassword {
 							data: data,
 						};
 					} catch (error) {
+						console.error('[错误] 登录接口请求异常:', error.message);
 						return {
 							success: false,
 							error: error.message,
@@ -194,10 +213,14 @@ class AnyRouterChangePassword {
 
 			if (!loginResult.success) {
 				console.log(`[错误] 登录接口调用失败: ${loginResult.error || loginResult.status}`);
+				if (loginResult.responseText) {
+					console.log(`[调试] 响应内容: ${loginResult.responseText}`);
+				}
 				return {
 					success: false,
 					message: `登录失败: ${loginResult.error || loginResult.status}`,
 					userInfo: null,
+					debugInfo: loginResult.responseText,
 				};
 			}
 
@@ -424,17 +447,11 @@ if (isMainModule) {
 			// 2. 修改账号密码（示例：修改多个账号）
 			const accounts = [
 				{
-					username: 'user1',
-					oldPassword: 'oldPass1',
-					newUsername: null,
-					newPassword: 'newPass1',
-				},
-				{
-					username: 'user2',
-					oldPassword: 'oldPass2',
-					newUsername: 'newUser2',
-					newPassword: null,
-				},
+					username: 'ziyou123653',
+					oldPassword: 'ziyou123653',
+					newUsername: "ziyou123654",
+					newPassword: 'ziyou123654',
+				}
 			];
 
 			for (const account of accounts) {
