@@ -1,4 +1,4 @@
-name: AnyRouter 自动签到 (Node.js)
+name: AnyRouter 自动签到linux
 
 on:
   workflow_dispatch:  # 只允许手动触发
