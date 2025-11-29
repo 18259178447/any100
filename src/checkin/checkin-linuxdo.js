@@ -623,8 +623,8 @@ if (isMainModule) {
 		console.log('===== AnyRouter LinuxDo 登录签到测试 =====\n');
 
 		// 从环境变量或命令行参数获取账号信息
-		const username = process.env.LINUXDO_USERNAME || 'yujie1';
-		const password = process.env.LINUXDO_PASSWORD || 'yujie1i4z6';
+		const username = process.env.LINUXDO_USERNAME || 'Oliver183';
+		const password = process.env.LINUXDO_PASSWORD || 'TVI888tvi%';
 
 		const result = await signin.loginAndGetSession(username, password);
 

@@ -10,6 +10,7 @@ import AnyRouterSessionSignIn from './checkin-session.js';
 import {
 	updateAccountInfo as updateAccountInfoAPI,
 	getLinuxDoAccountsWithSession,
+	getCheckinableAccounts,
 } from '../api/index.js';
 import { fileURLToPath } from 'url';
 
@@ -554,28 +555,28 @@ class UnifiedAnyRouterChecker {
 
 		// 根据登录类型选择对应的登录方法
 		switch (accountType) {
-		case 0:
-			// 账号密码登录
-			console.log(`[类型] ${accountName}: 账号密码登录`);
-			return await this.checkInWithPassword(accountInfo);
+			case 0:
+				// 账号密码登录
+				console.log(`[类型] ${accountName}: 账号密码登录`);
+				return await this.checkInWithPassword(accountInfo);
 
-		case 1:
-			// LinuxDo 第三方登录
-			console.log(`[类型] ${accountName}: LinuxDo 第三方登录`);
-			return await this.checkInWithLinuxDo(accountInfo);
+			case 1:
+				// LinuxDo 第三方登录
+				console.log(`[类型] ${accountName}: LinuxDo 第三方登录`);
+				return await this.checkInWithLinuxDo(accountInfo);
 
-		case 2:
-			// GitHub 第三方登录
-			console.log(`[类型] ${accountName}: GitHub 第三方登录`);
-			return await this.checkInWithGitHub(accountInfo);
+			case 2:
+				// GitHub 第三方登录
+				console.log(`[类型] ${accountName}: GitHub 第三方登录`);
+				return await this.checkInWithGitHub(accountInfo);
 
-		default:
-			console.log(`[失败] ${accountName}: 未知的登录类型 ${accountType}`);
-			return {
-				success: false,
-				account: accountName,
-				error: `未知的登录类型: ${accountType}`,
-			};
+			default:
+				console.log(`[失败] ${accountName}: 未知的登录类型 ${accountType}`);
+				return {
+					success: false,
+					account: accountName,
+					error: `未知的登录类型: ${accountType}`,
+				};
 		}
 	}
 
@@ -683,41 +684,31 @@ const isMainModule = fileURLToPath(import.meta.url) === process.argv[1];
 if (isMainModule) {
 	(async () => {
 		try {
-			const accounts = [
+			console.log('[初始化] 从服务端获取可签到账号列表...');
 
-				{
-					"_id": "6909c3a5653f953a81b48654",
-  "used": 0,
-  "notes": "zhaoli-lihanof@swpu.edu.cn",
-  "balance": 125,
-  "is_sold": false,
-  "session": "",
-  "aff_code": "aGPN",
-  "can_sell": false,
-  "password": "4fd83121d3c3",
-  "username": "linuxdo_89581",
-  "sell_date": 1762269584303,
-  "account_id": "89581",
-  "create_date": 1762247589110,
-  "update_date": 1763220907713,
-  "account_type": 0,
-  "checkin_date": 1762254062684,
-  "checkin_mode": 1,
-  "workflow_url": "https://github.com/18259178447/any101",
-  "anyrouter_user_id": "691808adc07d618fc5128eab",
-  "agentrouter_balance": 0,
-  "checkin_error_count": 0,
-  "session_expire_time": 0
-}
+			// 从服务端获取可签到账号列表
+			const apiResult = await getCheckinableAccounts();
 
+			if (!apiResult.success) {
+				console.error(`[错误] 获取账号列表失败: ${apiResult.error}`);
+				process.exit(1);
+			}
 
-			]
+			const { data } = apiResult;
+			console.log(`[成功] 获取到 ${data.total} 个可签到账号 (查询日期: ${data.beijing_date})`);
+
+			if (data.total === 0) {
+				console.log('[完成] 没有需要签到的账号，程序退出');
+				process.exit(0);
+			}
+
 			// 执行签到
-			const checker = new UnifiedAnyRouterChecker(accounts);
+			const checker = new UnifiedAnyRouterChecker(data.accounts);
 			const checkResult = await checker.run();
 			console.log('\n[最终结果]', JSON.stringify(checkResult, null, 2));
 		} catch (error) {
 			console.error(`[错误] 执行失败: ${error.message}`);
+			console.error('[堆栈]', error.stack);
 			process.exit(1);
 		}
 	})();

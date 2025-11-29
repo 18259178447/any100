@@ -49,7 +49,7 @@ class AnyRouterSignIn {
 
 			// 启动浏览器（非持久化模式）
 			browser = await chromium.launch({
-				headless: true,
+				headless: false,
 				args: getStealthArgs(),
 				ignoreDefaultArgs: getIgnoreDefaultArgs(),
 			});
@@ -84,28 +84,8 @@ class AnyRouterSignIn {
 			// 等待页面完全稳定
 			await this.randomDelay(2000, 3000);
 
-			// 步骤1.5: 查看并打印当前 cookies 和 localStorage
-			console.log('[调试] 登录前的浏览器状态:');
-			const beforeLoginState = await page.evaluate(() => {
-
-				// 获取 localStorage
-				const localStorageData = {};
-				for (let i = 0; i < localStorage.length; i++) {
-					const key = localStorage.key(i);
-					localStorageData[key] = localStorage.getItem(key);
-				}
-
-				return {
-					localStorage: localStorageData,
-				};
-			});
-			const cookies2 = await context.cookies();
-
-			console.log('[Cookies] 登录前 cookies:', cookies2);
-			console.log('[localStorage] 登录前 localStorage:', JSON.stringify(beforeLoginState.localStorage, null, 2));
-
 			// 步骤2: 调用登录接口（使用 page.evaluate + fetch）
-			console.log('[API] 调用登录接口...', "2" + username + "1", "2" + password + "2");
+			console.log('[API] 调用登录接口...', '2' + username + '1', '2' + password + '2');
 			const loginResult = await page.evaluate(
 				async ({ baseUrl, username, password }) => {
 					try {
@@ -147,10 +127,16 @@ class AnyRouterSignIn {
 
 			// 打印请求和响应头部
 			if (loginResult.requestHeaders) {
-				console.log('[请求头] 登录接口请求头:', JSON.stringify(loginResult.requestHeaders, null, 2));
+				console.log(
+					'[请求头] 登录接口请求头:',
+					JSON.stringify(loginResult.requestHeaders, null, 2)
+				);
 			}
 			if (loginResult.responseHeaders) {
-				console.log('[响应头] 登录接口响应头:', JSON.stringify(loginResult.responseHeaders, null, 2));
+				console.log(
+					'[响应头] 登录接口响应头:',
+					JSON.stringify(loginResult.responseHeaders, null, 2)
+				);
 			}
 
 			if (!loginResult.success) {
@@ -225,10 +211,16 @@ class AnyRouterSignIn {
 
 			// 打印请求和响应头部
 			if (signInResult.requestHeaders) {
-				console.log('[请求头] 签到接口请求头:', JSON.stringify(signInResult.requestHeaders, null, 2));
+				console.log(
+					'[请求头] 签到接口请求头:',
+					JSON.stringify(signInResult.requestHeaders, null, 2)
+				);
 			}
 			if (signInResult.responseHeaders) {
-				console.log('[响应头] 签到接口响应头:', JSON.stringify(signInResult.responseHeaders, null, 2));
+				console.log(
+					'[响应头] 签到接口响应头:',
+					JSON.stringify(signInResult.responseHeaders, null, 2)
+				);
 			}
 
 			if (signInResult.success && signInResult.data.success) {

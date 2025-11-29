@@ -5,11 +5,14 @@
 export { default as apiClient, handleApiResponse } from './client.js';
 export {
 	addOfficialAccount,
+	addAccount,
 	updateAccountInfo,
 	getAccountLoginInfo,
 	addAccountLoginInfo,
 	getLinuxDoAccountsWithSession,
 	incrementBalance,
+	getCheckinableAccounts,
+	updatePasswordChange,
 } from './account.js';
 export { getRandomApplication, resetApplicationUsage } from './application.js';
 export { getTopPriorityTask, updateInviteCount } from './invite-task.js';

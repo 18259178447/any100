@@ -55,7 +55,7 @@ export async function addEmail(emailData) {
 	if (!['swpu', 'huel', '892507222'].includes(email_source)) {
 		return {
 			success: false,
-			error: '邮件来源必须为 \'swpu\', \'huel\' 或 \'892507222\'',
+			error: "邮件来源必须为 'swpu', 'huel' 或 '892507222'",
 		};
 	}
 
@@ -156,7 +156,7 @@ export async function getLatestEmail(params) {
 	if (!['swpu', 'huel', '892507222'].includes(email_source)) {
 		return {
 			success: false,
-			error: '邮件来源必须为 \'swpu\', \'huel\' 或 \'892507222\'',
+			error: "邮件来源必须为 'swpu', 'huel' 或 '892507222'",
 		};
 	}
 
@@ -250,7 +250,7 @@ export async function queryEmails(params) {
 	if (!['swpu', 'huel', '892507222'].includes(email_source)) {
 		return {
 			success: false,
-			error: '邮件来源必须为 \'swpu\', \'huel\' 或 \'892507222\'',
+			error: "邮件来源必须为 'swpu', 'huel' 或 '892507222'",
 		};
 	}
 
