@@ -8,18 +8,6 @@ import AnyRouterChangePassword from './change-password.js';
 import { updatePasswordChange } from '../api/index.js';
 
 /**
- * 生成随机后缀（2个字符，数字或字母）
- */
-function generateRandomSuffix() {
-	const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-	let suffix = '';
-	for (let i = 0; i < 2; i++) {
-		suffix += chars[Math.floor(Math.random() * chars.length)];
-	}
-	return suffix;
-}
-
-/**
  * 执行单个账号的密码修改
  * @param {Object} passwordChangeData - 密码修改数据
  * @param {string} passwordChangeData.record_id - 申请记录ID
@@ -56,11 +44,12 @@ async function executeSingleChangePassword(passwordChangeData) {
 		if (!initResult.success) {
 			console.error('[失败] 浏览器初始化失败:', initResult.message);
 
-			// 上传错误状态到服务端
+			// 浏览器初始化失败不是API错误，不增加错误次数
 			await updatePasswordChange({
 				record_id,
 				status: 3,
 				error_reason: `浏览器初始化失败: ${initResult.message}`,
+				increment_error_count: false,
 			});
 
 			return {
@@ -105,90 +94,31 @@ async function executeSingleChangePassword(passwordChangeData) {
 			console.log('\n[失败] 账密修改失败');
 			console.log(`[错误信息] ${changeResult.message}`);
 
-			// 检查是否是用户名重复错误且错误次数为2
-			const isDuplicateUsernameError =
-				changeResult.message.includes('Duplicate entry') &&
-				changeResult.message.includes("for key 'username'");
+			// 根据 is_api_error 标志判断是否为 API 错误
+			const isApiError = changeResult.is_api_error === true;
 
-			if (isDuplicateUsernameError && error_count === 2) {
-				console.log('\n[重试] 检测到用户名重复且错误次数为2，生成新用户名重试...');
+			await updatePasswordChange({
+				record_id,
+				status: 3,
+				error_reason: changeResult.message,
+				increment_error_count: isApiError,
+			});
 
-				// 生成新用户名（原用户名 + 2个随机字符）
-				const randomSuffix = generateRandomSuffix();
-				const retryUsername = new_username + randomSuffix;
-
-				console.log(`[新用户名] ${retryUsername}`);
-
-				// 重新执行修改
-				const retryResult = await changer.changePassword(
-					old_username,
-					old_password,
-					retryUsername,
-					new_password
-				);
-
-				if (retryResult.success) {
-					console.log('\n[成功] 重试修改成功！');
-					console.log(`[用户信息] ${JSON.stringify(retryResult.userInfo, null, 2)}`);
-
-					// 上传成功状态到服务端（使用新的用户名）
-					const uploadResult = await updatePasswordChange({
-						record_id,
-						status: 2,
-						new_username: retryResult.userInfo?.username || retryUsername,
-						account_info: retryResult.userInfo,
-					});
-
-					if (uploadResult.success) {
-						console.log('[成功] 结果已上传到服务端');
-					} else {
-						console.warn('[警告] 上传结果到服务端失败:', uploadResult.error);
-					}
-
-					return {
-						success: true,
-						message: '账密修改成功（重试）',
-						userInfo: retryResult.userInfo,
-					};
-				} else {
-					console.log('\n[失败] 重试修改失败');
-					console.log(`[错误信息] ${retryResult.message}`);
-
-					// 上传错误状态到服务端
-					await updatePasswordChange({
-						record_id,
-						status: 3,
-						error_reason: `重试修改失败: ${retryResult.message}`,
-					});
-
-					return {
-						success: false,
-						message: `重试修改失败: ${retryResult.message}`,
-					};
-				}
-			} else {
-				// 非用户名重复错误或错误次数不是2，直接上传错误状态
-				await updatePasswordChange({
-					record_id,
-					status: 3,
-					error_reason: changeResult.message,
-				});
-
-				return {
-					success: false,
-					message: changeResult.message,
-				};
-			}
+			return {
+				success: false,
+				message: changeResult.message,
+			};
 		}
 	} catch (error) {
 		console.error('\n[异常] 执行过程中发生异常:', error.message);
 		console.error(error.stack);
 
-		// 上传错误状态到服务端
+		// 异常不是API错误，不增加错误次数
 		await updatePasswordChange({
 			record_id,
 			status: 3,
 			error_reason: `执行异常: ${error.message}`,
+			increment_error_count: false,
 		});
 
 		return {
@@ -223,6 +153,8 @@ if (isMainModule) {
 			}
 
 			const passwordChangeData = JSON.parse(passwordChangeDataJson);
+
+			console.log(`账号数据: ${JSON.stringify(passwordChangeData, null, 2)}`);
 
 			// 验证必需字段
 			const requiredFields = ['record_id', 'old_username', 'old_password'];

@@ -135,6 +135,7 @@ class AnyRouterChangePassword {
 				success: false,
 				message: '新用户名和新密码至少需要提供一个',
 				userInfo: null,
+				is_api_error: false,
 			};
 		}
 
@@ -145,6 +146,7 @@ class AnyRouterChangePassword {
 				success: false,
 				message: '浏览器未初始化',
 				userInfo: null,
+				is_api_error: false,
 			};
 		}
 
@@ -221,6 +223,7 @@ class AnyRouterChangePassword {
 					message: `登录失败: ${loginResult.error || loginResult.status}`,
 					userInfo: null,
 					debugInfo: loginResult.responseText,
+					is_api_error: false,
 				};
 			}
 
@@ -230,16 +233,18 @@ class AnyRouterChangePassword {
 					success: false,
 					message: loginResult.data.message || '登录失败',
 					userInfo: null,
+					is_api_error: true,
 				};
 			}
 
 			const apiUser = loginResult.data.data?.id;
 			if (!apiUser) {
-				console.log('[错误] 登录响应中未找到用户 ID');
+				console.log(`[错误] 登录响应中未找到用户 ID`);
 				return {
 					success: false,
 					message: '登录响应中未找到用户 ID',
 					userInfo: null,
+					is_api_error: false,
 				};
 			}
 
@@ -302,6 +307,7 @@ class AnyRouterChangePassword {
 					success: false,
 					message: `修改密码失败: ${changeResult.error}`,
 					userInfo: null,
+					is_api_error: false,
 				};
 			}
 
@@ -311,6 +317,7 @@ class AnyRouterChangePassword {
 					success: false,
 					message: changeResult.data.message || '修改密码失败',
 					userInfo: null,
+					is_api_error: true,
 				};
 			}
 
@@ -379,6 +386,7 @@ class AnyRouterChangePassword {
 				success: false,
 				message: `操作失败: ${error.message}`,
 				userInfo: null,
+				is_api_error: false,
 			};
 		}
 	}
