@@ -93,16 +93,22 @@ async function executeSingleChangePassword(passwordChangeData) {
 		} else {
 			console.log('\n[失败] 账密修改失败');
 			console.log(`[错误信息] ${changeResult.message}`);
+			console.log(`[调试] changeResult 对象:`, JSON.stringify(changeResult, null, 2));
+			console.log(`[调试] is_api_error 值: ${changeResult.is_api_error}`);
 
 			// 根据 is_api_error 标志判断是否为 API 错误
 			const isApiError = changeResult.is_api_error === true;
+			console.log(`[调试] isApiError (经过转换): ${isApiError}`);
 
-			await updatePasswordChange({
+			const updateParams = {
 				record_id,
 				status: 3,
 				error_reason: changeResult.message,
 				increment_error_count: isApiError,
-			});
+			};
+			console.log(`[调试] updatePasswordChange 参数:`, JSON.stringify(updateParams, null, 2));
+
+			await updatePasswordChange(updateParams);
 
 			return {
 				success: false,

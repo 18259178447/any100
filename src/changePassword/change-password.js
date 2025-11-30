@@ -223,7 +223,7 @@ class AnyRouterChangePassword {
 					message: `登录失败: ${loginResult.error || loginResult.status}`,
 					userInfo: null,
 					debugInfo: loginResult.responseText,
-					is_api_error: true,
+					is_api_error: false,
 				};
 			}
 
@@ -307,7 +307,7 @@ class AnyRouterChangePassword {
 					success: false,
 					message: `修改密码失败: ${changeResult.error}`,
 					userInfo: null,
-					is_api_error: true,
+					is_api_error: false,
 				};
 			}
 
