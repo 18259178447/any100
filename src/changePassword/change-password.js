@@ -53,7 +53,7 @@ class AnyRouterChangePassword {
 
 			// 启动浏览器（非持久化模式）
 			this.browser = await chromium.launch({
-				headless: false,
+				headless: headlessMode,
 				args: getStealthArgs(),
 				ignoreDefaultArgs: getIgnoreDefaultArgs(),
 			});
