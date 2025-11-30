@@ -412,7 +412,7 @@ export async function getCheckinableAccounts(params = {}) {
  * @description 更新账密修改申请记录的状态、用户名、错误信息等
  *
  * **核心逻辑**：
- * - 当状态设置为错误(3)且提供了错误原因时，错误次数会自动递增
+ * - 当状态设置为错误(3)且 increment_error_count 为 true 且提供了错误原因时，错误次数会自动递增
  * - 当状态设置为已完成(2)时，会自动记录完成时间
  * - 每次更新都会自动更新 update_date 时间戳
  * - 新用户名由调用方处理业务逻辑后传入
@@ -420,20 +420,30 @@ export async function getCheckinableAccounts(params = {}) {
  * @param {Object} params - 请求参数
  * @param {string} params.record_id - 申请记录ID（必需）
  * @param {string} [params.new_username] - 新用户名（可选，由调用方处理业务逻辑后传入）
- * @param {number} [params.status] - 申请状态（可选）：0-未开始，1-进行中，2-已完成（会自动记录 complete_date），3-错误（配合 error_reason 使用时会自动递增 error_count）
- * @param {string} [params.error_reason] - 错误原因（可选，当 status=3 时建议提供，会自动递增错误次数）
+ * @param {number} [params.status] - 申请状态（可选）：0-未开始，1-进行中，2-已完成（会自动记录 complete_date），3-错误
+ * @param {string} [params.error_reason] - 错误原因（可选，当 status=3 且 increment_error_count=true 时会自动递增错误次数）
+ * @param {boolean} [params.increment_error_count] - 是否增加错误次数（可选，默认false。仅在 status=3 且有 error_reason 时生效）
  * @param {Object} [params.account_info] - 账号信息（可选，从AnyRouter获取的完整账号信息对象）
  * @returns {Promise<{success: boolean, data?: {errCode: number, errMsg: string}, error?: string}>}
  * @example
- * // 示例1：更新为错误状态（错误次数会自动递增）
+ * // 示例1：更新为错误状态（增加错误次数）
  * const result = await updatePasswordChange({
  *   record_id: '65a1b2c3d4e5f6789012345',
  *   status: 3,
- *   error_reason: '密码修改失败：账号已被锁定'
+ *   error_reason: '密码修改失败：账号已被锁定',
+ *   increment_error_count: true
  * });
  *
  * @example
- * // 示例2：更新为已完成状态
+ * // 示例2：更新为错误状态（不增加错误次数）
+ * const result = await updatePasswordChange({
+ *   record_id: '65a1b2c3d4e5f6789012345',
+ *   status: 3,
+ *   error_reason: '浏览器初始化失败'
+ * });
+ *
+ * @example
+ * // 示例3：更新为已完成状态
  * const result = await updatePasswordChange({
  *   record_id: '65a1b2c3d4e5f6789012345',
  *   status: 2,
@@ -443,16 +453,9 @@ export async function getCheckinableAccounts(params = {}) {
  *     password: 'encrypted_password'
  *   }
  * });
- *
- * @example
- * // 示例3：只更新用户名
- * const result = await updatePasswordChange({
- *   record_id: '65a1b2c3d4e5f6789012345',
- *   new_username: 'modified_username_AB'
- * });
  */
 export async function updatePasswordChange(params) {
-	const { record_id, new_username, status, error_reason, account_info } = params;
+	const { record_id, new_username, status, error_reason, increment_error_count, account_info } = params;
 
 	// 验证必需字段
 	if (!record_id) {
@@ -493,9 +496,16 @@ export async function updatePasswordChange(params) {
 		requestData.error_reason = error_reason;
 	}
 
+	if (increment_error_count !== undefined) {
+		requestData.increment_error_count = increment_error_count;
+	}
+
 	if (account_info !== undefined) {
 		requestData.account_info = account_info;
 	}
+
+	console.log('[API调试] updatePasswordChange 最终请求数据:', JSON.stringify(requestData, null, 2));
+	console.log('[API调试] increment_error_count 值:', increment_error_count, '类型:', typeof increment_error_count);
 
 	return handleApiResponse(apiClient.post('/anyrouter2/updatePasswordChange', requestData));
 }
