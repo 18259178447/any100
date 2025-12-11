@@ -114,7 +114,7 @@ class AnyRouterSessionSignIn {
 			const result = await page.evaluate(
 				async ({ baseUrl, apiUser }) => {
 					try {
-						const response = await fetch(`${baseUrl}/api/token/?p=0&size=10`, {
+						const response = await fetch(`${baseUrl}/api/token/?p=0&size=100`, {
 							method: 'GET',
 							headers: {
 								Accept: 'application/json, text/plain, */*',
