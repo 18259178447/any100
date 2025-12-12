@@ -356,6 +356,7 @@ class AnyRouterSessionSignIn {
 			// 启动浏览器
 			console.log('[浏览器] 启动浏览器...');
 			context = await chromium.launchPersistentContext('', {
+				ignoreHTTPSErrors: true, // 忽略HTTPS证书错误
 				headless: true,
 				userAgent:
 					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',

@@ -510,6 +510,161 @@ export async function updatePasswordChange(params) {
 	return handleApiResponse(apiClient.post('/anyrouter2/updatePasswordChange', requestData));
 }
 
+/**
+ * 获取用户的账号列表
+ * @description 获取指定用户的所有账号列表，支持排序和用户名模糊搜索
+ *
+ * **功能特性**：
+ * 1. 支持按出售时间或余额排序
+ * 2. 支持用户名模糊搜索（大小写不敏感）
+ * 3. 对于官方用户（official_user_001），自动过滤已售出的账号
+ * 4. 自动分页获取所有符合条件的数据
+ *
+ * @param {Object} params - 查询参数
+ * @param {string} params.user_id - AnyRouter用户ID（关联anyrouter-users表的_id）
+ * @param {string} [params.sort_field] - 排序字段（可选）：
+ *   - sell_date: 按出售时间/获得时间排序
+ *   - balance: 按AnyRouter余额排序
+ *   - 不传或传入无效值时，默认按创建时间降序排序
+ * @param {string} [params.sort_order='desc'] - 排序方向（可选）：
+ *   - asc: 升序
+ *   - desc: 降序（默认）
+ * @param {string} [params.username_keyword] - 用户名模糊搜索关键词（可选）
+ *   - 大小写不敏感
+ *   - 自动去除前后空格
+ *   - 不传或为空时不进行搜索过滤
+ * @returns {Promise<{success: boolean, data?: Array<{
+ *   _id: string,
+ *   username: string,
+ *   password: string,
+ *   account_type: 0|1|2,
+ *   checkin_date: number|null,
+ *   balance: number,
+ *   tokens: Array<{id: number, key: string, unlimited_quota?: boolean, used_quota?: number, remain_quota?: number}>,
+ *   checkin_mode: 1|2|3,
+ *   sell_date: number|null,
+ * 	 notes: string,
+ * 	 create_date: number
+ * }>, error?: string}>}
+ * @example
+ * // 获取用户所有账号
+ * const result = await getAccountList({ user_id: 'user_001' });
+ * if (result.success) {
+ *   console.log(`找到 ${result.data.length} 个账号`);
+ * }
+ *
+ * @example
+ * // 按余额降序排序
+ * const result = await getAccountList({
+ *   user_id: 'user_001',
+ *   sort_field: 'balance',
+ *   sort_order: 'desc'
+ * });
+ *
+ * @example
+ * // 搜索包含"test"的账号
+ * const result = await getAccountList({
+ *   user_id: 'user_001',
+ *   username_keyword: 'test'
+ * });
+ */
+export async function getAccountList(params) {
+	const { user_id, sort_field, sort_order, username_keyword } = params;
+
+	// 验证必需字段
+	if (!user_id) {
+		return {
+			success: false,
+			error: '用户ID不能为空',
+		};
+	}
+
+	// 验证排序字段（如果提供）
+	if (sort_field !== undefined && !['sell_date', 'balance'].includes(sort_field)) {
+		return {
+			success: false,
+			error: '排序字段必须为 sell_date 或 balance',
+		};
+	}
+
+	// 验证排序方向（如果提供）
+	if (sort_order !== undefined && !['asc', 'desc'].includes(sort_order)) {
+		return {
+			success: false,
+			error: '排序方向必须为 asc 或 desc',
+		};
+	}
+
+	// 构建请求数据
+	const requestData = { user_id };
+
+	if (sort_field !== undefined) {
+		requestData.sort_field = sort_field;
+	}
+
+	if (sort_order !== undefined) {
+		requestData.sort_order = sort_order;
+	}
+
+	if (username_keyword !== undefined && username_keyword.trim() !== '') {
+		requestData.username_keyword = username_keyword.trim();
+	}
+
+	return handleApiResponse(apiClient.post('/anyrouter2/getAccountList', requestData));
+}
+
+/**
+ * 删除AnyRouter账号
+ * @description 删除指定的AnyRouter账号
+ *
+ * **功能特性**：
+ * 1. 验证账号是否存在
+ * 2. 验证用户是否有权限删除该账号（账号必须属于该用户）
+ * 3. 删除成功后自动更新用户的账号数量（total_accounts - 1）
+ * 4. 记录操作日志到 anyrouter-operation-logs 表
+ *
+ * @param {Object} params - 请求参数
+ * @param {string} params.account_id - 要删除的账号记录ID（anyrouter-accounts表的_id）
+ * @param {string} params.user_id - AnyRouter用户ID（用于验证权限，必须是账号的所有者）
+ * @returns {Promise<{success: boolean, data?: {errCode: number, errMsg: string}, error?: string}>}
+ * @example
+ * // 删除指定账号
+ * const result = await deleteAccount({
+ *   account_id: '507f1f77bcf86cd799439011',
+ *   user_id: 'official_user_001'
+ * });
+ * if (result.success) {
+ *   console.log('账号删除成功');
+ * } else {
+ *   console.error('删除失败:', result.error);
+ * }
+ */
+export async function deleteAccount(params) {
+	const { account_id, user_id } = params;
+
+	// 验证必需字段
+	if (!account_id) {
+		return {
+			success: false,
+			error: '账号ID不能为空',
+		};
+	}
+
+	if (!user_id) {
+		return {
+			success: false,
+			error: '用户ID不能为空',
+		};
+	}
+
+	return handleApiResponse(
+		apiClient.post('/anyrouter2/deleteAccount', {
+			account_id,
+			user_id,
+		})
+	);
+}
+
 export default {
 	addOfficialAccount,
 	addAccount,
@@ -520,4 +675,6 @@ export default {
 	incrementBalance,
 	getCheckinableAccounts,
 	updatePasswordChange,
+	getAccountList,
+	deleteAccount,
 };

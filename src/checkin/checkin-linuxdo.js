@@ -153,8 +153,10 @@ class AnyRouterLinuxDoSignIn {
 				})
 			);
 
-			// 创建浏览器上下文
-			context = await browser.newContext();
+			// 创建浏览器上下文，忽略 HTTPS 证书错误
+			context = await browser.newContext({
+				ignoreHTTPSErrors: true,
+			});
 			console.log('[指纹] 反指纹保护已应用');
 
 			// 创建页面

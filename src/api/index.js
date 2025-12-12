@@ -13,6 +13,8 @@ export {
 	incrementBalance,
 	getCheckinableAccounts,
 	updatePasswordChange,
+	getAccountList,
+	deleteAccount,
 } from './account.js';
 export { getRandomApplication, resetApplicationUsage } from './application.js';
 export { getTopPriorityTask, updateInviteCount } from './invite-task.js';

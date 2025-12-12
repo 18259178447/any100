@@ -74,9 +74,10 @@ class AnyRouterGitHubSignIn {
 			console.log(`[浏览器] 使用持久化上下文: ${userDataDir}`);
 			console.log('[浏览器] 启动 Chromium 浏览器（持久化模式，已启用反检测）...');
 
-			// 启动持久化浏览器上下文
+			// 启动持久化浏览器上下文，忽略 HTTPS 证书错误
 			context = await chromium.launchPersistentContext(userDataDir, {
 				headless: true,
+				ignoreHTTPSErrors: true,
 				viewport: { width: 1920, height: 1080 },
 				userAgent:
 					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',

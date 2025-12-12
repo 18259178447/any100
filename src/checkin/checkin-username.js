@@ -54,8 +54,9 @@ class AnyRouterSignIn {
 				ignoreDefaultArgs: getIgnoreDefaultArgs(),
 			});
 
-			// 创建浏览器上下文
+			// 创建浏览器上下文，忽略 HTTPS 证书错误
 			context = await browser.newContext({
+				ignoreHTTPSErrors: true,
 				viewport: { width: 1920, height: 1080 },
 				userAgent:
 					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
