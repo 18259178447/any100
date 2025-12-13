@@ -7,6 +7,7 @@ import { chromium } from 'playwright';
 import axios from 'axios';
 import { createHTTP2Adapter } from 'axios-http2-adapter';
 import { fileURLToPath } from 'url';
+import { addKeys } from '../api/index.js';
 
 class AnyRouterSessionSignIn {
 	constructor(baseUrl = 'https://anyrouter.top') {
@@ -544,6 +545,9 @@ class AnyRouterSessionSignIn {
 							}
 						}
 
+						// 收集本次待创建的出售令牌名称，用于后续批量上传
+						const pendingSellTokenNames = [];
+
 						// 获取令牌信息之前，根据账号配置管理令牌
 						if (accountInfo && accountInfo.tokens && Array.isArray(accountInfo.tokens)) {
 							console.log(
@@ -559,10 +563,19 @@ class AnyRouterSessionSignIn {
 								// 如果没有 id，表示是待创建的新令牌
 								else if (!tokenConfig.id) {
 									console.log('[令牌管理] 准备创建新令牌');
-									await this.createToken(page, apiUser, {
+									const createSuccess = await this.createToken(page, apiUser, {
 										unlimited_quota: tokenConfig.unlimited_quota || false,
 										remain_quota: tokenConfig.remain_quota,
+										name: tokenConfig.name,
 									});
+
+									// 记录创建成功的出售令牌名称
+									if (createSuccess && tokenConfig.name && tokenConfig.name.startsWith('出售_')) {
+										pendingSellTokenNames.push({
+											name: tokenConfig.name,
+											remain_quota: tokenConfig.remain_quota,
+										});
+									}
 								}
 							}
 
@@ -576,8 +589,37 @@ class AnyRouterSessionSignIn {
 						if (tokens.length === 0) {
 							const created = await this.createToken(page, apiUser, { unlimited_quota: true });
 							if (created) {
-								// 创建成功后重新获取令牌列表
 								tokens = await this.getTokens(page, apiUser);
+							}
+						}
+
+						// 如果有待上传的出售令牌，批量上传到服务器
+						if (pendingSellTokenNames.length > 0) {
+							console.log(`[令牌管理] 检测到 ${pendingSellTokenNames.length} 个出售令牌，准备批量上传...`);
+
+							// 从获取到的令牌中匹配出售令牌
+							const keysToUpload = [];
+							for (const pending of pendingSellTokenNames) {
+								const matchedToken = tokens.find((t) => t.name === pending.name);
+								if (matchedToken && matchedToken.key) {
+									const quota = pending.remain_quota ? pending.remain_quota / 500000 : 0;
+									keysToUpload.push({
+										key: matchedToken.key,
+										key_type: 'anyrouter',
+										is_sold: false,
+										quota: quota,
+										source_name: `${accountInfo.username || ""}&${pending.name}`,
+									});
+								}
+							}
+
+							if (keysToUpload.length > 0) {
+								const uploadResult = await addKeys(keysToUpload);
+								if (uploadResult.success) {
+									console.log(`[令牌管理] 批量上传成功，共 ${keysToUpload.length} 个Key`);
+								} else {
+									console.log(`[令牌管理] 批量上传失败: ${uploadResult.error}`);
+								}
 							}
 						}
 
